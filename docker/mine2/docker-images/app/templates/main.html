@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
+    <link rel="stylesheet" href="../static/styles.css">
+    </head>
+  <body>
+    <div><h1>THIS IS A THING</h1></div>
+    <div id="controls">
+      <img id="record" src="../static/mic128.png" onclick="toggleRecording(this);">
+    </div>
+    <div>
+      <h1>{{ connected }}</h1>
+      <p id="data"></p>
+    </div>
+    <input id="volume" type="range" min="0" max="1" step="0.1" value="0.5"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.slim.js"></script>
+    <script src="../static/main.js"></script>
+  </body>
+</html>
