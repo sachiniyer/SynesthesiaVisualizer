@@ -11,7 +11,8 @@
     <a id="link" href=""></a>
     <button id='delete' onclick="deletecontainer()">This button will delete the container once created</button>
   </body>
-  <script>var instance_id = '0';
+  <script>
+    var instance_id = '0';
 
 function createcontainer() {
     async function postData(url = '', data = {}) {
@@ -38,6 +39,7 @@ function createcontainer() {
     postData("https://fj2g6x5vlh.execute-api.us-east-1.amazonaws.com/deploy1/initialization", {})
 	.then(data => {
 	    console.log(data);
+
 	});
     /*
       var requestOptions = {
