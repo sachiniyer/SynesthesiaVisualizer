@@ -4,6 +4,7 @@ import wave
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit, socketio
 import librosa
+import numpy as np
 
 app = Flask(__name__)
 app.config['FILEDIR'] = 'static'
@@ -21,23 +22,29 @@ def index():
 
 @socketio.on('sound')
 def connect(message):
-    aggaudio(message)
+    processtotalaudio(message)
 
+@socketio.on('message')
+def handle_message(message):
+    print('Hello world!', file=sys.stderr)
+    return redirect('/')
 
 def aggaudio(audio):
     totalaudio = totalaudio.append(audio)
     buffsize += 1
     if buffsize >= maxbuffsize:
         processtotalaudio(totalaudio)
-        totalaudio = []
+        totalaudio =  []
         buffsize = 0
 
 def processtotalaudio(y):
-    y_harmonic, y_percussive = librosa.effecs.hpss(y)
+    y = np.array(y)
+    print(y)
+    y_harmonic, y_percussive = librosa.effects.hpss(y)
     chromagraph = librosa.feature.chroma_cqt(y=y_harmonic, sr=samplerate)
     emit('data', chromagraph)
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0",port=80, debug=True)
+    app.run(host="0.0.0.0",port=800, debug=True)
     socketio.run(app)

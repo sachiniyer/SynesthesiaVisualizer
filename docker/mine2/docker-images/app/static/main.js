@@ -9,9 +9,9 @@ else {
     alert("meanie");
 }
 
-var socket = io('http//localhost:80');
-socket.on('sound', function() {
-    console.log(socket.connected);
+var socket = io('http://localhost:800');
+socket.on('connect', () => {
+    socket.send('Hello');
 });
 
 console.log("start dem audio");
@@ -44,17 +44,22 @@ if (navigator.mediaDevices.getUserMedia && audiostarted){
 
 // ---
 
+function send_data(final_array) {
+    socket.emit('sound', final_array);
+}
+
+
 function show_some_data(given_typed_array, num_row_to_display, label) {
 
     var size_buffer = given_typed_array.length;
     var index = 0;
     var max_index = num_row_to_display;
 
+    send_data(given_typed_array);
     //console.log("__________ " + label);
-    socket.emit(given_typed_array);
     /*for (; index < max_index && index < size_buffer; index += 1) {
       console.log(given_typed_array[index]);
-	    }*/
+      }*/
 }
 
 function process_microphone_buffer(event) { // invoked by event loop
@@ -84,10 +89,10 @@ function start_microphone(stream){
 
     document.getElementById('volume').addEventListener('change', function() {
 
-        var curr_volume = this.value;
-        gain_node.gain.value = curr_volume;
+	var curr_volume = this.value;
+	gain_node.gain.value = curr_volume;
 
-        console.log("curr_volume ", curr_volume);
+	console.log("curr_volume ", curr_volume);
     });
 
     // --- setup FFT
@@ -105,15 +110,15 @@ function start_microphone(stream){
 
     script_processor_fft_node.onaudioprocess = function() {
 
-        // get the average for the first channel
-        var array = new Uint8Array(analyserNode.frequencyBinCount);
-        analyserNode.getByteFrequencyData(array);
+	// get the average for the first channel
+	var array = new Uint8Array(analyserNode.frequencyBinCount);
+	analyserNode.getByteFrequencyData(array);
 
-        // draw the spectrogram
-        if (microphone_stream.playbackState == microphone_stream.PLAYING_STATE) {
+	// draw the spectrogram
+	if (microphone_stream.playbackState == microphone_stream.PLAYING_STATE) {
 
 	    show_some_data(array, 5, "from fft");
-        }
+	}
     };
 }
 
