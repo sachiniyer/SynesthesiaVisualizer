@@ -26,8 +26,7 @@ def connect(message):
 
 @socketio.on('message')
 def handle_message(message):
-    print('Hello world!', file=sys.stderr)
-    return redirect('/')
+    print('Hello world!')
 
 def aggaudio(audio):
     totalaudio = totalaudio.append(audio)
@@ -38,7 +37,9 @@ def aggaudio(audio):
         buffsize = 0
 
 def processtotalaudio(y):
+    print("process")
     y = np.array(y)
+    print(y)
     y_harmonic, y_percussive = librosa.effects.hpss(y)
     chromagraph = librosa.feature.chroma_cqt(y=y_harmonic, sr=samplerate)
     emit('data', chromagraph)

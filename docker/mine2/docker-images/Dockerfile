@@ -2,6 +2,7 @@ FROM tiangolo/uwsgi-nginx:python3.8
 
 LABEL maintainer="Sebastian Ramirez <tiangolo@gmail.com>"
 
+RUN pip install pip --upgrade
 RUN pip install flask
 RUN pip install flask-socketio
 RUN pip install eventlet
@@ -9,6 +10,9 @@ RUN pip install librosa
 RUN apt update
 RUN apt -y upgrade
 RUN apt install -y libsndfile1
+RUN apt install -y letsencrypt
+RUN pip3 install pip --upgrade
+COPY default.conf /etc/nginx/conf.d/default.conf
 
 
 # URL under which static (not modified by Python) files will be requested
@@ -23,6 +27,7 @@ ENV STATIC_INDEX 0
 
 # Add demo app
 COPY ./app /app
+COPY ./ssl_cert/wildcard /wildcard
 WORKDIR /app
 
 # Make /app/* available to be imported by Python globally to better support several use cases like Alembic migrations.
@@ -30,8 +35,10 @@ ENV PYTHONPATH=/app
 
 # Move the base entrypoint to reuse it
 RUN mv /entrypoint.sh /uwsgi-nginx-entrypoint.sh
+
 # Copy the entrypoint that will generate Nginx additional configs
 COPY entrypoint.sh /entrypoint.sh
+COPY ./ssl_cert/nginx.conf /etc/nginx/nginx.conf
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]

@@ -1,155 +1,132 @@
-
-window.AudioContext = window.AudioContext || window.webkitAudioContext;
-
+var audiostarted = false;
+var AudioContext = window.AudioContext || window.webkitAudioContext;
 var audioContext = new AudioContext();
-var audioInput = null,
-    realAudioInput = null,
-    inputPoint = null,
-    recording = false;
-var rafID = null;
-var analyserContext = null;
-var canvasWidth, canvasHeight;
-var socketio = io.connect(location.origin + '/audio', {transports: ['websocket']});
+if (confirm("allow audio plz")){
+    console.log("shit pressed");
+    audiostarted = true;
+    audioContext.resume();
 
-socketio.on('add-wavefile', function(url) {
-    // add new recording to page
-    audio = document.createElement('p');
-    audio.innerHTML = '<audio src="' + url + '" controls>';
-    document.getElementById('wavefiles').appendChild(audio);
+}
+else {
+    alert("meanie");
+}
+
+console.log(window.location.orgin);
+
+var socket = io(window.location.orgin);
+socket.on('connect', () => {
+    socket.send('Hello');
 });
 
-function toggleRecording( e ) {
-    if (e.classList.contains('recording')) {
-        // stop recording
-        e.classList.remove('recording');
-        recording = false;
-        socketio.emit('end-recording');
-    } else {
-        // start recording
-        e.classList.add('recording');
-        recording = true;
-        socketio.emit('start-recording', {numChannels: 1, bps: 16, fps: parseInt(audioContext.sampleRate)});
-    }
+console.log("start dem audio");
+
+var BUFF_SIZE = 16384;
+
+var audioInput = null,
+    microphone_stream = null,
+    gain_node = null,
+    script_processor_node = null,
+    script_processor_fft_node = null,
+    analyserNode = null;
+
+if (!navigator.mediaDevices.getUserMedia)
+    navigator.getUserMedia = navigator.mediaDevices.getUserMedia || navigator.webkitGetUserMedia ||
+    navigator.mozGetUserMedia || navigator.msGetUserMedia;
+
+if (navigator.mediaDevices.getUserMedia && audiostarted){
+
+    navigator.mediaDevices.getUserMedia({audio:true})
+	.then(
+	    function(stream) {
+		console.log("trying to start microphone");
+		start_microphone(stream);
+	    })
+	.catch(function(e) {
+	    alert('FUCK FUCK FUCK FUCK FUCK');
+	});
+} else { alert('getUserMedia not working'); }
+
+// ---
+
+function send_data(final_array) {
+    socket.emit('sound', final_array);
 }
 
-function convertToMono( input ) {
-    var splitter = audioContext.createChannelSplitter(2);
-    var merger = audioContext.createChannelMerger(2);
 
-    input.connect( splitter );
-    splitter.connect( merger, 0, 0 );
-    splitter.connect( merger, 0, 1 );
-    return merger;
+function show_some_data(given_typed_array, num_row_to_display, label) {
+
+    var size_buffer = given_typed_array.length;
+    var index = 0;
+    var max_index = num_row_to_display;
+
+    send_data(given_typed_array);
+    //console.log("__________ " + label);
+    //for (; index < max_index && index < size_buffer; index += 1) {
+    //  console.log(given_typed_array[index]);
+
 }
 
-function cancelAnalyserUpdates() {
-    window.cancelAnimationFrame( rafID );
-    rafID = null;
+function process_microphone_buffer(event) { // invoked by event loop
+
+    var i, N, inp, microphone_output_buffer;
+
+    microphone_output_buffer = event.inputBuffer.getChannelData(0); // just mono - 1 channel for now
+
+    // microphone_output_buffer  <-- this buffer contains current gulp of data size BUFF_SIZE
+
+    show_some_data(microphone_output_buffer, 5, "from getChannelData");
 }
 
-function updateAnalysers(time) {
-    if (!analyserContext) {
-        var canvas = document.getElementById('analyser');
-        canvasWidth = canvas.width;
-        canvasHeight = canvas.height;
-        analyserContext = canvas.getContext('2d');
-    }
+function start_microphone(stream){
+    gain_node = audioContext.createGain();
+    gain_node.connect( audioContext.destination );
 
-    // analyzer draw code here
-    {
-        var SPACING = 3;
-        var BAR_WIDTH = 1;
-        var numBars = Math.round(canvasWidth / SPACING);
-        var freqByteData = new Uint8Array(analyserNode.frequencyBinCount);
+    microphone_stream = audioContext.createMediaStreamSource(stream);
+    microphone_stream.connect(gain_node);
 
-        analyserNode.getByteFrequencyData(freqByteData);
+    script_processor_node = audioContext.createScriptProcessor(BUFF_SIZE, 1, 1);
+    script_processor_node.onaudioprocess = process_microphone_buffer;
 
-        analyserContext.clearRect(0, 0, canvasWidth, canvasHeight);
-        analyserContext.fillStyle = '#F6D565';
-        analyserContext.lineCap = 'round';
-        var multiplier = analyserNode.frequencyBinCount / numBars;
+    microphone_stream.connect(script_processor_node);
 
-        // Draw rectangle for each frequency bin.
-        for (var i = 0; i < numBars; ++i) {
-            var magnitude = 0;
-            var offset = Math.floor( i * multiplier );
-            // gotta sum/average the block, or we miss narrow-bandwidth spikes
-            for (var j = 0; j< multiplier; j++)
-                magnitude += freqByteData[offset + j];
-            magnitude = magnitude / multiplier;
-            var magnitude2 = freqByteData[i * multiplier];
-            analyserContext.fillStyle = "hsl( " + Math.round((i*360)/numBars) + ", 100%, 50%)";
-            analyserContext.fillRect(i * SPACING, canvasHeight, BAR_WIDTH, -magnitude);
-        }
-    }
+    // --- enable volume control for output speakers
 
-    rafID = window.requestAnimationFrame( updateAnalysers );
-}
+    document.getElementById('volume').addEventListener('change', function() {
 
-function toggleMono() {
-    if (audioInput != realAudioInput) {
-        audioInput.disconnect();
-        realAudioInput.disconnect();
-        audioInput = realAudioInput;
-    } else {
-        realAudioInput.disconnect();
-        audioInput = convertToMono( realAudioInput );
-    }
+	var curr_volume = this.value;
+	gain_node.gain.value = curr_volume;
 
-    audioInput.connect(inputPoint);
-}
+	console.log("curr_volume ", curr_volume);
+    });
 
-function gotStream(stream) {
-    inputPoint = audioContext.createGain();
+    // --- setup FFT
 
-    // Create an AudioNode from the stream.
-    realAudioInput = audioContext.createMediaStreamSource(stream);
-    audioInput = realAudioInput;
-
-    audioInput = convertToMono( audioInput );
-    audioInput.connect(inputPoint);
+    script_processor_fft_node = audioContext.createScriptProcessor(2048, 1, 1);
+    script_processor_fft_node.connect(gain_node);
 
     analyserNode = audioContext.createAnalyser();
+    analyserNode.smoothingTimeConstant = 0;
     analyserNode.fftSize = 2048;
-    inputPoint.connect( analyserNode );
 
-    scriptNode = (audioContext.createScriptProcessor || audioContext.createJavaScriptNode).call(audioContext, 1024, 1, 1);
-    scriptNode.onaudioprocess = function (audioEvent) {
-        if (recording) {
-            input = audioEvent.inputBuffer.getChannelData(0);
+    microphone_stream.connect(analyserNode);
 
-            // convert float audio data to 16-bit PCM
-            var buffer = new ArrayBuffer(input.length * 2);
-            var output = new DataView(buffer);
-            for (var i = 0, offset = 0; i < input.length; i++, offset += 2) {
-                var s = Math.max(-1, Math.min(1, input[i]));
-                output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-            }
-            socketio.emit('write-audio', buffer);
-        }
+    analyserNode.connect(script_processor_fft_node);
+
+    script_processor_fft_node.onaudioprocess = function() {
+
+	// get the average for the first channel
+	var array = new Uint8Array(analyserNode.frequencyBinCount);
+	analyserNode.getByteFrequencyData(array);
+
+	// draw the spectrogram
+	if (microphone_stream.playbackState == microphone_stream.PLAYING_STATE) {
+
+	    show_some_data(array, 5, "from fft");
+	}
     };
-    inputPoint.connect(scriptNode);
-    scriptNode.connect(audioContext.destination);
-
-    zeroGain = audioContext.createGain();
-    zeroGain.gain.value = 0.0;
-    inputPoint.connect( zeroGain );
-    zeroGain.connect( audioContext.destination );
-    updateAnalysers();
 }
 
-function initAudio() {
-    if (!navigator.getUserMedia)
-        navigator.getUserMedia = navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    if (!navigator.cancelAnimationFrame)
-        navigator.cancelAnimationFrame = navigator.webkitCancelAnimationFrame || navigator.mozCancelAnimationFrame;
-    if (!navigator.requestAnimationFrame)
-        navigator.requestAnimationFrame = navigator.webkitRequestAnimationFrame || navigator.mozRequestAnimationFrame;
-
-    navigator.getUserMedia({audio: true}, gotStream, function(e) {
-        alert('Error getting audio');
-        console.log(e);
-    });
-}
-
-window.addEventListener('load', initAudio );
+socket.on('data', (data) => {
+    document.getElementById("data").innerHTML = data;
+    console.log("logging");
+});

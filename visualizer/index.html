@@ -3,7 +3,7 @@
 
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-        <title>Babylon Template</title>
+        <title>Visualizer</title>
 
         <style>
             html, body {
@@ -49,7 +49,7 @@
             var light2 = new BABYLON.PointLight("light2", new BABYLON.Vector3(0, 1, -1), scene);
 
             // Add and manipulate meshes in the scene
-            var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter:2}, scene);
+            var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter:100}, scene);
 
             return scene;
         };

@@ -1,22 +1,35 @@
 var audiostarted = false;
 var AudioContext = window.AudioContext || window.webkitAudioContext;
+var audioContext = new AudioContext();
+unlockAudioContext(audioContext);
 if (confirm("allow audio plz")){
-    var audioContext = new AudioContext();
     console.log("shit pressed");
     audiostarted = true;
+    audioContext.resume();
 }
 else {
     alert("meanie");
 }
+function unlockAudioContext(audioContext) {
+    if (AudioContext.state !== 'suspended') return;
+    const b = document.body;
+    const events = ['touchstart','touchend', 'mousedown','keydown'];
+    events.forEach(e => b.addEventListener(e, unlock, false));
+    function unlock() { audioContext.resume().then(clean); }
+    function clean() { events.forEach(e => b.removeEventListener(e, unlock)); }
+    console.log("here");
+}
 
-var socket = io(location.origin);
+console.log(window.location.orgin);
+
+var socket = io(window.location.orgin);
 socket.on('connect', () => {
     socket.send('Hello');
 });
 
 console.log("start dem audio");
 
-var BUFF_SIZE = 16384*10;
+var BUFF_SIZE = 16384;
 
 var audioInput = null,
     microphone_stream = null,
@@ -45,6 +58,7 @@ if (navigator.mediaDevices.getUserMedia && audiostarted){
 // ---
 
 function send_data(final_array) {
+    console.log(final_array);
     socket.emit('sound', final_array);
 }
 
@@ -57,16 +71,16 @@ function show_some_data(given_typed_array, num_row_to_display, label) {
 
     send_data(given_typed_array);
     //console.log("__________ " + label);
-    /*for (; index < max_index && index < size_buffer; index += 1) {
-      console.log(given_typed_array[index]);
-      }*/
+    //for (; index < max_index && index < size_buffer; index += 1) {
+    //  console.log(given_typed_array[index]);
 }
 
 function process_microphone_buffer(event) { // invoked by event loop
 
     var i, N, inp, microphone_output_buffer;
 
-    microphone_output_buffer = event.inputBuffer.getChannelData(0); // just mono - 1 channel for now
+    microphone_output_buffer = event.inputBuffer.getChannelData(0);
+    console.log(microphone_output_buffer);
 
     // microphone_output_buffer  <-- this buffer contains current gulp of data size BUFF_SIZE
 
