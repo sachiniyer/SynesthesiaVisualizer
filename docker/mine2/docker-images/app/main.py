@@ -39,12 +39,11 @@ def aggaudio(audio):
 
 def processtotalaudio(y):
     y = np.array(y)
-    print(y)
     y_harmonic, y_percussive = librosa.effects.hpss(y)
     chromagraph = librosa.feature.chroma_cqt(y=y_harmonic, sr=samplerate)
     emit('data', chromagraph)
 
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0",port=800, debug=True)
+    app.run(host="0.0.0.0",port=443, debug=True)
     socketio.run(app)

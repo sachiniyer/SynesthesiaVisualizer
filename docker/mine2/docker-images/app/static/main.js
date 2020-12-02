@@ -9,14 +9,14 @@ else {
     alert("meanie");
 }
 
-var socket = io('http://localhost:800');
+var socket = io(location.origin);
 socket.on('connect', () => {
     socket.send('Hello');
 });
 
 console.log("start dem audio");
 
-var BUFF_SIZE = 16384;
+var BUFF_SIZE = 16384*10;
 
 var audioInput = null,
     microphone_stream = null,
