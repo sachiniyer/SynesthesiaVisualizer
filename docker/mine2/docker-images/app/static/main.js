@@ -17,7 +17,6 @@ function unlockAudioContext(audioContext) {
     events.forEach(e => b.addEventListener(e, unlock, false));
     function unlock() { audioContext.resume().then(clean); }
     function clean() { events.forEach(e => b.removeEventListener(e, unlock)); }
-    console.log("here");
 }
 
 console.log(window.location.orgin);
@@ -82,8 +81,6 @@ function process_microphone_buffer(event) { // invoked by event loop
     microphone_output_buffer = event.inputBuffer.getChannelData(0);
     console.log(microphone_output_buffer);
 
-    // microphone_output_buffer  <-- this buffer contains current gulp of data size BUFF_SIZE
-
     show_some_data(microphone_output_buffer, 5, "from getChannelData");
 }
 
@@ -99,8 +96,6 @@ function start_microphone(stream){
 
     microphone_stream.connect(script_processor_node);
 
-    // --- enable volume control for output speakers
-
     document.getElementById('volume').addEventListener('change', function() {
 
 	var curr_volume = this.value;
@@ -109,12 +104,10 @@ function start_microphone(stream){
 	console.log("curr_volume ", curr_volume);
     });
 
-    // --- setup FFT
-
     script_processor_fft_node = audioContext.createScriptProcessor(2048, 1, 1);
     script_processor_fft_node.connect(gain_node);
 
-    analyserNode = audioContext.createAnalyser();
+    var analyserNode = audioContext.createAnalyser();
     analyserNode.smoothingTimeConstant = 0;
     analyserNode.fftSize = 2048;
 
@@ -124,11 +117,11 @@ function start_microphone(stream){
 
     script_processor_fft_node.onaudioprocess = function() {
 
-	// get the average for the first channel
-	var array = new Uint8Array(analyserNode.frequencyBinCount);
-	analyserNode.getByteFrequencyData(array);
 
-	// draw the spectrogram
+	var array = new Float32Array(analyserNode.fftSize);
+	analyserNode.getFloatTimeDomainData(array);
+
+
 	if (microphone_stream.playbackState == microphone_stream.PLAYING_STATE) {
 
 	    show_some_data(array, 5, "from fft");
